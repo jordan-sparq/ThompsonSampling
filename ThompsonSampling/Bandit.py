@@ -66,11 +66,13 @@ class GaussianThompson(Bandit):
         self.mu_0 = ((self.tau_0 * self.mu_0) + (self.n * self.Q * self.tau)) / (self.tau_0 + self.n * self.tau)
         self.tau_0 += self.tau
 
-    def simulate_observation(self):
+    def simulate_observation(self, mu_vary = None):
         """ return a random observation """
+        if mu_vary is None:
+            mu_vary = self.q
         # the reward is a Gaussian distribution with unit variance
         # around the true value 'q'
-        value = np.random.normal(loc=self.q, scale=1/np.sqrt(self.tau))
+        value = np.random.normal(loc=mu_vary, scale=1/np.sqrt(self.tau))
         return value
 
     def plot_arms(self, x: np.ndarray, arms, true_values: list):

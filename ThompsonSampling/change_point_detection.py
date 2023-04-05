@@ -14,9 +14,10 @@ def window(bandit, observations, width=10, model='l1', min_size=2, jump=5):
         print('Change point has been found')
         # how far is this observation from the expected mean?
         # 0th element of result is the change point location
+        print(observations[result[0]], )
         distance = observations[result[0]] - bandit.mu_0
         # what is the probability of this not being a change point
-        prob = scipy.stats.norm.pdf(observations[result[0]], mu=bandit.mu_0, scale=1/bandit.tau_0)
+        prob = scipy.stats.norm.pdf(observations[result[0]], loc=bandit.mu_0, scale=1/bandit.tau_0)
         return result, distance, prob
     else:
         return None, None, None
