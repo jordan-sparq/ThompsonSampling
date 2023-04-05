@@ -21,7 +21,7 @@ if __name__ == '__main__':
     x = np.linspace(0.0, 16.0, 200)
     # set the random seed to produce a recreatable graph
     
-    seed = 15
+    seed = 42
     random.seed(seed)
     np.random.seed(seed)
 

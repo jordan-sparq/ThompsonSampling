@@ -54,7 +54,7 @@ class GaussianThompson(Bandit):
 
     def sample(self):
         """ return a value from the posterior normal distribution """
-        return np.random.normal(loc=self.mu_0, scale=1/self.tau_0)
+        return np.random.normal(loc=self.mu_0, scale=1/np.sqrt(self.tau_0))
 
     def update(self, R):
         """ update this arm after it has returned reward value 'R' """
