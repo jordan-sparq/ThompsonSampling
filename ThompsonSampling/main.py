@@ -46,6 +46,7 @@ if __name__ == '__main__':
             arm_samples = [arm.sample() for arm in arms]
             arm_index = utils.random_argmax(arm_samples)
             # charge from the chosen arm and update its mean reward value
+            # this will become a real observation but a simulation for now
             reward = arms[arm_index].simulate_observation()
             arms[arm_index].update(reward)
             # store observations

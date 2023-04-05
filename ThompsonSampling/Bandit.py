@@ -70,7 +70,7 @@ class GaussianThompson(Bandit):
         """ return a random observation """
         # the reward is a Gaussian distribution with unit variance
         # around the true value 'q'
-        value = np.random.randn() + self.q
+        value = np.random.normal(loc=self.q, scale=1/np.sqrt(self.tau))
         return value
 
     def plot_arms(self, x: np.ndarray, arms, true_values: list):
