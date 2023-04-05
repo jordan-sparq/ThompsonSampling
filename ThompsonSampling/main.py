@@ -12,6 +12,7 @@ norm = stats.norm
 gamma = stats.gamma
 import scipy
 import utils
+from change_point_detection import *
 
 if __name__ == '__main__':
 
@@ -31,13 +32,12 @@ if __name__ == '__main__':
 
     print(f"True Values = {arm_true_values}")
 
-    # create the arms
-    # - the mean value of each arm is derived from the arm order index, which is doubled to give
-    #   distinct values and offset by 2 to keep the distribution above zero
-
     arms = [GaussianThompson(q) for q in arm_true_values]
     # print('arms', arms)
     draw_samples = [1, 1, 3, 10, 10, 25, 150, 800]
+    # store n observations for each arm for change point detection
+    arm_observations = [[] for _ in range(len(arms))]
+
     for j, i in enumerate(draw_samples):
         plt.subplot(4, 2, j + 1)
 
@@ -45,10 +45,20 @@ if __name__ == '__main__':
             # choose the arm with the current highest sampled value or arbitrary select a arm in the case of a tie
             arm_samples = [arm.sample() for arm in arms]
             arm_index = utils.random_argmax(arm_samples)
-
             # charge from the chosen arm and update its mean reward value
             reward = arms[arm_index].simulate_observation()
             arms[arm_index].update(reward)
+            # store observations
+            arm_observations[arm_index].append(reward)
+            # only want to store a rolling 30 observations
+            if len(arm_observations[arm_index]) >= 30:
+                arm_observations[arm_index].pop(0)
+            # only want to look at change points once we have more than 10 observations
+            if len(arm_observations[arm_index]) >= 10:
+                result, distance, prob = window(arms[arm_index], arm_observations[arm_index])
+                if result is not None:
+                    print("Change point detected!")
+                    # TO DO: adjust expected mean if we see a change point for x days
 
         arms[0].plot_arms(x, arms, arm_true_values)
 
