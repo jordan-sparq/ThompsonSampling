@@ -10,7 +10,9 @@ gamma = stats.gamma
 import utils
 from change_point.change_point_rupture import *
 
-def simulation_changepoint(adjust_for_changepoint = True, verbose =0):
+def simulation_changepoint(adjust_for_changepoint: bool = True,
+                           verbose: bool = False,
+                           history_window: int = None):
     """
     simulate a bandit problem where there is a change point for one arm
 
@@ -20,6 +22,7 @@ def simulation_changepoint(adjust_for_changepoint = True, verbose =0):
 
     :param adjust_for_changepoint: true if you want the expected mean to adjust to the observed changepoint
     :param verbose: print details about the changepoint of verbose = 1
+    :param history_window: window in which to store observations, if none, store all observations
     :return: plots
     """
 
@@ -62,8 +65,9 @@ def simulation_changepoint(adjust_for_changepoint = True, verbose =0):
             # store observations
             arm_observations[arm_index].append(reward)
             # only want to store a rolling 30 observations
-            # if len(arm_observations[arm_index]) >= 30:
-            #     arm_observations[arm_index].pop(0)
+            if history_window is not None:
+                if len(arm_observations[arm_index]) >= history_window:
+                    arm_observations[arm_index].pop(0)
             # only want to look at change points once we have more than 10 observations
             if len(arm_observations[arm_index]) >= 10:
                 result, distance, prob = window(arms[arm_index], arm_observations[arm_index])
