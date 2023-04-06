@@ -108,6 +108,9 @@ class BernoulliThompson(Bandit):
 
     This bandit is useful when your expected reward is fixed between 0 - 1
     For example, conversion rate.
+
+    To Do: implement ability to simulate change point detection. Not sure how to do this for Bernoulli trials.
+
     """
     def __init__(self, q):
         self.alpha = 1  # the number of times this socket returned a charge        
