@@ -3,7 +3,8 @@ import ruptures as rpt
 import scipy.stats
 
 def window(bandit, observations, width=10, model='l1', min_size=2, jump=5, pen=10):
-    """ wrapper for the ruptures window function """
+    """ wrapper for the ruptures window function
+    """
     assert len(observations) >= width, f"observations must be > width ({width})"
     # change point detection
     algo = rpt.Window(width=width, model=model, min_size=min_size, jump=jump).fit(np.array(observations))

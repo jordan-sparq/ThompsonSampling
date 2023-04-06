@@ -15,6 +15,8 @@ def simulation_changepoint(adjust_for_changepoint = True, verbose =0):
     simulate a bandit problem where there is a change point for one arm
 
     When we are at the 15th step, we adjust the mean of the true reward distribution from 5 to 15
+    If adjust_for_changepoint is True, we shift the expected mean of the reward function based on the observation
+    at the changepoint. i.e if we see 15 but epect 5, we shift by 10.
 
     :param adjust_for_changepoint: true if you want the expected mean to adjust to the observed changepoint
     :param verbose: print details about the changepoint of verbose = 1
