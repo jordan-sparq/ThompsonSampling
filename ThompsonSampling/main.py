@@ -3,16 +3,12 @@
 # Press ⌃R to execute it or replace it with your code.
 # Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
 
-from Bandit import *
 import scipy.stats as stats
-import matplotlib
-import matplotlib.pyplot as plt
 from IPython.core.pylabtools import figsize
 norm = stats.norm
 gamma = stats.gamma
-import scipy
 import utils
-from change_point_detection import *
+from change_point.change_point_detection import *
 
 if __name__ == '__main__':
 
