@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 import scipy.stats as stats
 import matplotlib.pyplot as plt
 
-class Bandit:
+class Bandit(ABC):
     """ the base bandit class """
 
     def __init__(self, q):
@@ -20,19 +20,22 @@ class Bandit:
         """ initialise bandit arm """
         self.Q = 0  # the estimate of this arm's reward value
         self.n = 0  # the number of times this arm has been tried
-
+    @abstractmethod
     def simulate_observation(self):
         """ return a random amount of charge """
         pass
 
+    @abstractmethod
     def update(self, R):
         """ update this arm after it has returned reward value 'R' """
         pass
 
+    @abstractmethod
     def sample(self):
         """ return an estimate of the arm's reward value """
         pass
 
+    @abstractmethod
     def plot_arms(self, x: np.ndarray, arms, true_values: list):
         """ plot probability distributions for each arm """
         pass
