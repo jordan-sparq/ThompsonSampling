@@ -12,7 +12,7 @@ from change_point.change_point_rupture import *
 
 def simulation_changepoint(adjust_for_changepoint: bool = True,
                            verbose: bool = False,
-                           history_window: int = None):
+                           history_window: int = None) -> None:
     """
     simulate a bandit problem where there is a change point for one arm
 
@@ -25,6 +25,8 @@ def simulation_changepoint(adjust_for_changepoint: bool = True,
     :param history_window: window in which to store observations, if none, store all observations
     :return: plots
     """
+
+    assert (type(history_window) == int or history_window == None), "history_window must be None or an integer"
 
     figsize(11.0, 10)
 
