@@ -10,7 +10,16 @@ gamma = stats.gamma
 import utils
 from change_point.change_point_rupture import *
 
-if __name__ == '__main__':
+def simulation_changepoint(adjust_for_changepoint = True, verbose =0):
+    """
+    simulate a bandit problem where there is a change point for one arm
+
+    When we are at the 15th step, we adjust the mean of the true reward distribution from 5 to 15
+
+    :param adjust_for_changepoint: true if you want the expected mean to adjust to the observed changepoint
+    :param verbose: print details about the changepoint of verbose = 1
+    :return: plots
+    """
 
     figsize(11.0, 10)
 
@@ -57,9 +66,12 @@ if __name__ == '__main__':
             if len(arm_observations[arm_index]) >= 10:
                 result, distance, prob = window(arms[arm_index], arm_observations[arm_index])
                 if result is not None:
-                    print(f"Change point detected! At {result[0]}")
+                    if verbose:
+                        print(verbose)
+                        print(f"Change point detected! At {result[0]}")
                     # adjust expected mean
-                    # arms[arm_index].mu_0 += distance
+                    if adjust_for_changepoint:
+                        arms[arm_index].mu_0 += distance
                     # TO DO: adjust expected mean if we see a change point for x days
 
         arms[0].plot_arms(x, arms, arm_true_values)
@@ -71,3 +83,9 @@ if __name__ == '__main__':
 
     plt.plot(arm_observations[3])
     plt.show()
+
+
+
+if __name__ == '__main__':
+    simulation_changepoint(adjust_for_changepoint=True, verbose=0)
+    simulation_changepoint(adjust_for_changepoint=False, verbose=0)
