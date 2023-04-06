@@ -101,3 +101,58 @@ class GaussianThompson(Bandit):
             plt.legend()
             plt.autoscale(tight=True)
         return 0
+
+
+class BernoulliThompson(Bandit):
+    """ Bernoulli Thompson Bandit
+
+    This bandit is useful when your expected reward is fixed between 0 - 1
+    For example, conversion rate.
+    """
+    def __init__(self, q):
+        self.alpha = 1  # the number of times this socket returned a charge        
+        self.beta = 1  # the number of times no charge was returned
+
+        # pass the true reward value to the base PowerSocket             
+        super().__init__(q)
+
+    def simulate_observation(self):
+        """ return some charge with the socket's predefined probability """
+        return np.random.random() < self.q
+
+    def update(self, R):
+        """ increase the number of times this arm has been used and
+            update the counts of the number of times the socket has and 
+            has not returned a unit reward (alpha and beta)"""
+        self.n += 1
+        self.alpha += R
+        self.beta += (1 - R)
+
+    def sample(self):
+        """ return a value sampled from the beta distribution """
+        return np.random.beta(self.alpha, self.beta)
+
+    def plot_arms(self, x: np.ndarray, arms, true_values: list):
+        """
+        plot arms probability distributions
+
+        :param x: domain to plot distributions over
+        :param arm: list of class objects
+        :param true_values: list of true means of each arm
+        :return: plot, return 0
+        """
+
+        trials = sum([arm.n for arm in arms])
+        beta = stats.beta
+
+        for count, arm in enumerate(arms):
+            y = beta(arms[count].alpha, arms[count].beta)
+            p = plt.plot(x, y.pdf(x), lw=2, label=f'{arms[count].alpha - 1}/{arms[count].n}')
+            c = p[0].get_markeredgecolor()
+            plt.fill_between(x, y.pdf(x), 0, color=c, alpha=0.2)
+            plt.axvline(true_values[count], linestyle='--', color=c)
+            plt.autoscale(tight="True")
+            plt.title(f"{trials} Trials")
+            plt.legend()
+            plt.autoscale(tight=True)
+        return 0
