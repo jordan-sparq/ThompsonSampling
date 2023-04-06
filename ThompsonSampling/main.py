@@ -8,7 +8,7 @@ from IPython.core.pylabtools import figsize
 norm = stats.norm
 gamma = stats.gamma
 import utils
-from change_point.change_point_detection import *
+from change_point.change_point_rupture import *
 
 if __name__ == '__main__':
 
