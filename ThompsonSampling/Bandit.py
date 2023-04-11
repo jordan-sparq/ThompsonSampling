@@ -20,6 +20,7 @@ class Bandit(ABC):
         """ initialise bandit arm """
         self.Q = 0  # the estimate of this arm's reward value
         self.n = 0  # the number of times this arm has been tried
+
     @abstractmethod
     def simulate_observation(self):
         """ return a random amount of charge """
@@ -159,3 +160,5 @@ class BernoulliThompson(Bandit):
             plt.legend()
             plt.autoscale(tight=True)
         return 0
+
+
