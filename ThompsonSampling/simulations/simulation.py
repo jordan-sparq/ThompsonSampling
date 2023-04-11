@@ -159,6 +159,11 @@ class ArmTester:
         return self.total_steps, self.total_reward
 
 
+def update_mean(current_mean, new_value, n):
+    """ calculate the new mean from the previous mean and the new value """
+    return (1 - 1.0 / n) * current_mean + (1.0 / n) * new_value
+
+
 class ArmExperiment:
     """ setup and run repeated arm tests to get the average results """
 
@@ -231,10 +236,6 @@ class ArmExperiment:
         """ the average number of trials of each test """
         return self.mean_time_steps
 
-    def update_mean(self, current_mean, new_value, n):
-        """ calculate the new mean from the previous mean and the new value """
-        return (1 - 1.0 / n) * current_mean + (1.0 / n) * new_value
-
     def update_mean_array(self, current_mean, new_value, n):
         """ calculate the new mean from the previous mean and the new value for an array """
 
@@ -255,10 +256,10 @@ class ArmExperiment:
 
         # calculate the new means from the old means and the new value
         tester = self.arm_tester
-        self.mean_total_reward = self.update_mean(self.mean_total_reward, tester.get_mean_reward(), n)
-        self.optimal_selected = self.update_mean(self.optimal_selected, tester.get_optimal_arm_percentage(), n)
-        self.arm_percentages = self.update_mean(self.arm_percentages, tester.get_arm_percentages(), n)
-        self.mean_time_steps = self.update_mean(self.mean_time_steps, tester.get_time_steps(), n)
+        self.mean_total_reward = update_mean(self.mean_total_reward, tester.get_mean_reward(), n)
+        self.optimal_selected = update_mean(self.optimal_selected, tester.get_optimal_arm_percentage(), n)
+        self.arm_percentages = update_mean(self.arm_percentages, tester.get_arm_percentages(), n)
+        self.mean_time_steps = update_mean(self.mean_time_steps, tester.get_time_steps(), n)
 
         self.cumulative_reward_per_timestep = self.update_mean_array(self.cumulative_reward_per_timestep,
                                                                      tester.get_total_reward_per_timestep(), n)
@@ -282,6 +283,7 @@ class ArmExperiment:
             self.arm_tester.run(self.number_of_steps, self.maximum_total_reward)
             self.record_test_stats(n)
 
+
 if __name__ == '__main__':
     ArmTester(bandit=GaussianThompson, arm_order=[2, 1, 3, 5, 4], multiplier=2).run(100)
     ArmTester(bandit=BernoulliThompson, arm_order=[0.5, 0.1, 0.3, 0.2, 0.8], multiplier=1).run(100)
@@ -293,16 +295,18 @@ if __name__ == '__main__':
     number_of_steps = 100
     experiment_gaussian = ArmExperiment(arm_tester=gaussian_thompson, number_of_steps=number_of_steps)
     experiment_gaussian.run()
-    cumulative_optimal_reward = [r*10 for r in range(1, number_of_steps+1)]
+
+    # REGRET
+    cumulative_optimal_reward = [r * 10 for r in range(1, number_of_steps + 1)]
     regret = cumulative_optimal_reward - experiment_gaussian.get_cumulative_reward_per_timestep()
 
-    fig = plt.figure(figsize=(20,6))
+    fig = plt.figure(figsize=(20, 6))
     plt.suptitle(f'Epsilon Greedy Regret', fontsize=20, fontweight='bold')
 
     plt.subplot(1, 2, 1)
-    plt.plot(experiment_gaussian.get_cumulative_reward_per_timestep(),label = "Actual")
-    plt.plot(cumulative_optimal_reward, label ="Optimal")
-    plt.plot(regret, label ="Regret")
+    plt.plot(experiment_gaussian.get_cumulative_reward_per_timestep(), label="Actual")
+    plt.plot(cumulative_optimal_reward, label="Optimal")
+    plt.plot(regret, label="Regret")
     plt.legend()
     plt.title('Cumulative Reward vs Time', fontsize=15)
     plt.xlabel('Time Steps')
@@ -315,4 +319,3 @@ if __name__ == '__main__':
     plt.ylabel('Regret')
 
     plt.show()
-
