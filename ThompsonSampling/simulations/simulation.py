@@ -17,7 +17,7 @@ class ArmTester:
     def __init__(self, bandit=GaussianThompson, arm_order: list = [], multiplier=2, **kwargs):
 
         # create supplied arm type with a mean value defined by arm order 
-        self.arms = [bandit((q * multiplier) + 2, **kwargs) for q in arm_order]
+        self.arms = [bandit((q * multiplier), **kwargs) for q in arm_order]
 
         # set the number of arms equal to the number created
         self.number_of_arms = len(self.arms)
