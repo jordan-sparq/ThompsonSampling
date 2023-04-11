@@ -65,8 +65,12 @@ class ArmTester:
         for arm in self.arms:
             arm.initialize()
 
-    def simulate_observation(self, arm_index):
-        return self.arms[arm_index].simulate_observation()
+    def simulate_observation(self, arm_index, mu_vary=None):
+        if mu_vary is None:
+            return self.arms[arm_index].simulate_observation()
+        else:
+            # not all bandits will have this argument
+            return self.arms[arm_index].simulate_observation(mu_vary=mu_vary)
 
     def update(self, arm_index, reward):
         """ charge from & update the specified arm and associated parameters """
@@ -128,12 +132,12 @@ class ArmTester:
 
     def run(self,
             number_of_steps,
-            data: list = [],
             maximum_total_reward=float('inf'),
             change_point_method: str = None,
             change_point_burn: int = 10,
             adjust_for_change_point: bool = False,
-            change_point_window: int = None
+            change_point_window: int = None,
+            simulate_change_point_dict: dict = {}
             ):
         """ perform a single run, over the set of arms, 
             for the defined number of steps """
@@ -141,10 +145,6 @@ class ArmTester:
         # check change point is a valid method
         change_point_methods = {'window': changepoint.window, 'Pelt': changepoint.pelt}
         assert (change_point_method in change_point_methods.keys()) or (change_point_method is None)
-        print(data)
-        # has data been passed in?
-        if len(data) != 0:
-            number_of_steps = len(data)
 
         # store rewards for change point detection
         arm_observations = [[] for _ in range(len(self.arms))]
@@ -160,13 +160,17 @@ class ArmTester:
 
             # select an arm
             arm_index = self.select_arm(t)
-            print(data)
-            # if no data, simulate next observation, else take the next data point
-            if len(data) == 0:
+
+            # simulate change point
+            if len(simulate_change_point_dict) != 0 \
+                    and len(arm_observations[simulate_change_point_dict['simulate_changepoint_arm_index']]) >= simulate_change_point_dict['simulate_changepoint_step'] \
+                    and arm_index == simulate_change_point_dict['simulate_changepoint_arm_index']:
+                # check user wants a change point, and we have a change point at the desired step, and desired arm
+                reward = self.simulate_observation(arm_index, mu_vary=simulate_change_point_dict['simulate_changepoint_vary'])
+
+            else:
                 # simulate_observation from the chosen arm and update its mean reward value
                 reward = self.simulate_observation(arm_index)
-            else:
-                reward = data[t]
 
             self.update(arm_index, reward)
 
@@ -314,24 +318,25 @@ class ArmExperiment:
             self.number_of_trials = self.update_mean_array(self.number_of_trials, tester.get_number_of_trials(), n)
 
     def run(self,
-            data: list = [],
             maximum_total_reward=float('inf'),
             change_point_method: str = None,
             change_point_burn: int = 10,
             adjust_for_change_point: bool = False,
-            change_point_window: int = None):
+            change_point_window: int = None,
+            simulate_change_point_dict = {}
+            ):
         """ repeat the test over a set of arms for the specified number of trials """
         # do the specified number of runs for a single test
         self.initialize_run()
         for n in range(1, self.number_of_tests + 1):
             # do one run of the test
             self.arm_tester.run(self.number_of_steps,
-                                data=data,
                                 maximum_total_reward=self.maximum_total_reward,
                                 change_point_method=change_point_method,
                                 change_point_burn=change_point_burn,
                                 adjust_for_change_point=adjust_for_change_point,
-                                change_point_window=change_point_window
+                                change_point_window=change_point_window,
+                                simulate_change_point_dict=simulate_change_point_dict,
                                 )
             self.record_test_stats(n)
 
@@ -340,40 +345,58 @@ if __name__ == '__main__':
     """
     Example use cases
     """
-    # add change point
-    # input means not arm order
-    ArmTester(bandit=GaussianThompson, arm_values=[2, 1, 3, 5, 4], multiplier=2).run(100, change_point_method='window',
-                                                                                     change_point_window=30)
-    ArmTester(bandit=BernoulliThompson, arm_values=[0.5, 0.1, 0.3, 0.2, 0.8], multiplier=1).run(100)
 
+    # if we want a change point to be simulated for one arm
+    simulate_change_point_dict = {
+        'simulate_changepoint_arm_index': 3,
+        'simulate_changepoint_vary': 30,
+        'simulate_changepoint_step': 20,
+    }
+
+    # basic use
+    # ArmTester(bandit=GaussianThompson, arm_values=[2, 1, 3, 5, 4], multiplier=2).run(100)
+    # ArmTester(bandit=BernoulliThompson, arm_values=[0.5, 0.1, 0.3, 0.2, 0.8], multiplier=1).run(100)
+
+    # experiments with change point
     gaussian_thompson = ArmTester(bandit=GaussianThompson, arm_values=[2, 1, 3, 5, 4], multiplier=2)
-    bernoulli_thompson = ArmTester(bandit=BernoulliThompson, arm_values=[0.5, 0.1, 0.3, 0.2, 0.8], multiplier=1)
-
-    # experiments
     number_of_steps = 100
     experiment_gaussian = ArmExperiment(arm_tester=gaussian_thompson, number_of_steps=number_of_steps)
-    experiment_gaussian.run()
-    #
-    # # REGRET
-    # cumulative_optimal_reward = [r * 10 for r in range(1, number_of_steps + 1)]
-    # regret = cumulative_optimal_reward - experiment_gaussian.get_cumulative_reward_per_timestep()
-    #
-    # fig = plt.figure(figsize=(20, 6))
-    # plt.suptitle(f'Epsilon Greedy Regret', fontsize=20, fontweight='bold')
-    #
-    # plt.subplot(1, 2, 1)
-    # plt.plot(experiment_gaussian.get_cumulative_reward_per_timestep(), label="Actual")
-    # plt.plot(cumulative_optimal_reward, label="Optimal")
-    # plt.plot(regret, label="Regret")
-    # plt.legend()
-    # plt.title('Cumulative Reward vs Time', fontsize=15)
-    # plt.xlabel('Time Steps')
-    # plt.ylabel('Total Reward')
-    #
-    # plt.subplot(1, 2, 2)
-    # plt.title('Regret vs Time', fontsize=15)
-    # plt.plot(regret)
-    # plt.xlabel('Time Steps')
-    # plt.ylabel('Regret')
-    #
-    # plt.show()
+    experiment_gaussian.run(change_point_method='window', change_point_window=30, simulate_change_point_dict=simulate_change_point_dict)
+
+    # REGRET no change point
+    cumulative_optimal_reward_nocp = [r * 10 for r in range(1, number_of_steps + 1)]
+    regret_nochangepoint = cumulative_optimal_reward_nocp - experiment_gaussian.get_cumulative_reward_per_timestep()
+
+    # REGRET with change point detection ( we know where the change point is)
+    cumulative_optimal_reward = []
+    for r in range(1, number_of_steps + 1):
+        if r < simulate_change_point_dict['simulate_changepoint_step']:
+            cumulative_optimal_reward.append(10)
+        else:
+            cumulative_optimal_reward.append(simulate_change_point_dict['simulate_changepoint_vary'])
+
+    cumulative_optimal_reward = np.cumsum(cumulative_optimal_reward)
+    regret = cumulative_optimal_reward - experiment_gaussian.get_cumulative_reward_per_timestep()
+
+    fig = plt.figure(figsize=(20, 6))
+    plt.suptitle(f'Epsilon Greedy Regret', fontsize=20, fontweight='bold')
+
+    plt.subplot(1, 2, 1)
+    plt.plot(experiment_gaussian.get_cumulative_reward_per_timestep(), label="Actual")
+    plt.plot(cumulative_optimal_reward, label="Optimal")
+    plt.plot(cumulative_optimal_reward_nocp, label='No change point')
+    plt.plot(regret, label="Regret")
+    plt.legend()
+    plt.title('Cumulative Reward vs Time', fontsize=15)
+    plt.xlabel('Time Steps')
+    plt.ylabel('Total Reward')
+
+    plt.subplot(1, 2, 2)
+    plt.title('Regret vs Time', fontsize=15)
+    plt.plot(regret, label='Accounting for change points')
+    plt.plot(regret_nochangepoint, label='No change point detection')
+    plt.xlabel('Time Steps')
+    plt.ylabel('Regret')
+    plt.legend()
+
+    plt.show()
