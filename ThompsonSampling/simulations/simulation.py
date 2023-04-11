@@ -12,11 +12,23 @@ from Bandit import *
 
 
 class ArmTester:
-    """ create and test a set of arms over a single test run """
+    """ create and test a set of arms over a single test run
+
+    credit:  Steve Roberts
+    modified from: https://github.com/WhatIThinkAbout/BabyRobot/blob/master/Multi_Armed_Bandits/PowerarmSystem.py
+    """
 
     def __init__(self, bandit=GaussianThompson, arm_order: list = [], multiplier=2, **kwargs):
 
-        # create supplied arm type with a mean value defined by arm order 
+        # some quantities to track
+        self.arm_stats = None
+        self.total_reward_per_timestep = None
+        self.reward_per_timestep = None
+        self.total_reward = None
+        self.total_steps = None
+        self.number_of_steps = None
+
+        # create supplied arm type with a mean value defined by arm order
         self.arms = [bandit((q * multiplier), **kwargs) for q in arm_order]
 
         # set the number of arms equal to the number created
@@ -94,12 +106,12 @@ class ArmTester:
 
     def get_arm_percentages(self):
         """ get the percentage of times each arm was tried over the run """
-        return (self.arm_stats[:, :, 1][self.total_steps] / self.total_steps)
+        return self.arm_stats[:, :, 1][self.total_steps] / self.total_steps
 
     def get_optimal_arm_percentage(self):
         """ get the percentage of times the optimal arm was tried """
         final_trials = self.arm_stats[:, :, 1][self.total_steps]
-        return (final_trials[self.optimal_arm_index] / self.total_steps)
+        return final_trials[self.optimal_arm_index] / self.total_steps
 
     def get_time_steps(self):
         """ get the number of time steps that the test ran for """
@@ -142,12 +154,165 @@ class ArmTester:
 
         # get the stats for each arm at the end of the run        
         self.arm_stats[t + 1] = self.get_arm_stats(t + 1)
-        print(self.arm_stats[t + 1])
         # x = np.linspace(0, 20, 100)
         # self.arms[0].plot_arms(x, self.arms, [((q * self.multiplier) + 2) for q in self.arm_order])
         return self.total_steps, self.total_reward
 
 
+class ArmExperiment:
+    """ setup and run repeated arm tests to get the average results """
+
+    def __init__(self,
+                 arm_tester=ArmTester,
+                 number_of_tests=1000,
+                 number_of_steps=30,
+                 maximum_total_reward=float('inf'),
+                 **kwargs):
+
+        self.reward_per_timestep = None
+        self.cumulative_reward_per_timestep = None
+        self.number_of_trials = None
+        self.estimates = None
+        self.arm_percentages = None
+        self.mean_time_steps = None
+        self.optimal_selected = None
+        self.mean_total_reward = None
+        self.arm_tester = arm_tester
+        self.number_of_tests = number_of_tests
+        self.number_of_steps = number_of_steps
+        self.maximum_total_reward = maximum_total_reward
+        self.number_of_arms = self.arm_tester.number_of_arms
+
+    def initialize_run(self):
+
+        # keep track of the average values over the run
+        self.mean_total_reward = 0.
+        self.optimal_selected = 0.
+        self.mean_time_steps = 0.
+        self.arm_percentages = np.zeros(self.number_of_arms)
+        self.estimates = np.zeros(shape=(self.number_of_steps + 1, self.number_of_arms))
+        self.number_of_trials = np.zeros(shape=(self.number_of_steps + 1, self.number_of_arms))
+
+        # the cumulative total reward per timestep
+        self.cumulative_reward_per_timestep = np.zeros(shape=self.number_of_steps)
+
+        # the actual reward obtained at each timestep
+        self.reward_per_timestep = np.zeros(shape=self.number_of_steps)
+
+    def get_mean_total_reward(self):
+        """ the final total reward averaged over the number of timesteps """
+        return self.mean_total_reward
+
+    def get_cumulative_reward_per_timestep(self):
+        """ the cumulative total reward per timestep """
+        return self.cumulative_reward_per_timestep
+
+    def get_reward_per_timestep(self):
+        """ the mean actual reward obtained at each timestep """
+        return self.reward_per_timestep
+
+    def get_optimal_selected(self):
+        """ the mean times the optimal arm was selected """
+        return self.optimal_selected
+
+    def get_arm_percentages(self):
+        """ the mean of the percentage times each arm was selected """
+        return self.arm_percentages
+
+    def get_estimates(self):
+        """ per arm reward estimates """
+        return self.estimates
+
+    def get_number_of_trials(self):
+        """ per arm number of trials """
+        return self.number_of_trials
+
+    def get_mean_time_steps(self):
+        """ the average number of trials of each test """
+        return self.mean_time_steps
+
+    def update_mean(self, current_mean, new_value, n):
+        """ calculate the new mean from the previous mean and the new value """
+        return (1 - 1.0 / n) * current_mean + (1.0 / n) * new_value
+
+    def update_mean_array(self, current_mean, new_value, n):
+        """ calculate the new mean from the previous mean and the new value for an array """
+
+        new_value = np.array(new_value)
+
+        # pad the new array with its last value to make sure its the same length as the original           
+        pad_length = (current_mean.shape[0] - new_value.shape[0])
+
+        if pad_length > 0:
+            new_array = np.pad(new_value, (0, pad_length), mode='constant', constant_values=new_value[-1])
+        else:
+            new_array = new_value
+
+        return (1 - 1.0 / n) * current_mean + (1.0 / n) * new_array
+
+    def record_test_stats(self, n):
+        """ update the mean value for each statistic being tracked over a run """
+
+        # calculate the new means from the old means and the new value
+        tester = self.arm_tester
+        self.mean_total_reward = self.update_mean(self.mean_total_reward, tester.get_mean_reward(), n)
+        self.optimal_selected = self.update_mean(self.optimal_selected, tester.get_optimal_arm_percentage(), n)
+        self.arm_percentages = self.update_mean(self.arm_percentages, tester.get_arm_percentages(), n)
+        self.mean_time_steps = self.update_mean(self.mean_time_steps, tester.get_time_steps(), n)
+
+        self.cumulative_reward_per_timestep = self.update_mean_array(self.cumulative_reward_per_timestep,
+                                                                     tester.get_total_reward_per_timestep(), n)
+
+        # check if the tests are only running until a maximum reward value is reached
+        if self.maximum_total_reward == float('inf'):
+            self.estimates = self.update_mean_array(self.estimates, tester.get_estimates(), n)
+            self.cumulative_reward_per_timestep = self.update_mean_array(self.cumulative_reward_per_timestep,
+                                                                         tester.get_total_reward_per_timestep(), n)
+            self.reward_per_timestep = self.update_mean_array(self.reward_per_timestep,
+                                                              tester.get_reward_per_timestep(), n)
+            self.number_of_trials = self.update_mean_array(self.number_of_trials, tester.get_number_of_trials(), n)
+
+    def run(self):
+        """ repeat the test over a set of arms for the specified number of trials """
+
+        # do the specified number of runs for a single test
+        self.initialize_run()
+        for n in range(1, self.number_of_tests + 1):
+            # do one run of the test
+            self.arm_tester.run(self.number_of_steps, self.maximum_total_reward)
+            self.record_test_stats(n)
+
 if __name__ == '__main__':
     ArmTester(bandit=GaussianThompson, arm_order=[2, 1, 3, 5, 4], multiplier=2).run(100)
     ArmTester(bandit=BernoulliThompson, arm_order=[0.5, 0.1, 0.3, 0.2, 0.8], multiplier=1).run(100)
+
+    gaussian_thompson = ArmTester(bandit=GaussianThompson, arm_order=[2, 1, 3, 5, 4], multiplier=2)
+    bernoulli_thompson = ArmTester(bandit=BernoulliThompson, arm_order=[0.5, 0.1, 0.3, 0.2, 0.8], multiplier=1)
+
+    # experiments
+    number_of_steps = 100
+    experiment_gaussian = ArmExperiment(arm_tester=gaussian_thompson, number_of_steps=number_of_steps)
+    experiment_gaussian.run()
+    cumulative_optimal_reward = [r*10 for r in range(1, number_of_steps+1)]
+    regret = cumulative_optimal_reward - experiment_gaussian.get_cumulative_reward_per_timestep()
+
+    fig = plt.figure(figsize=(20,6))
+    plt.suptitle(f'Epsilon Greedy Regret', fontsize=20, fontweight='bold')
+
+    plt.subplot(1, 2, 1)
+    plt.plot(experiment_gaussian.get_cumulative_reward_per_timestep(),label = "Actual")
+    plt.plot(cumulative_optimal_reward, label ="Optimal")
+    plt.plot(regret, label ="Regret")
+    plt.legend()
+    plt.title('Cumulative Reward vs Time', fontsize=15)
+    plt.xlabel('Time Steps')
+    plt.ylabel('Total Reward')
+
+    plt.subplot(1, 2, 2)
+    plt.title('Regret vs Time', fontsize=15)
+    plt.plot(regret)
+    plt.xlabel('Time Steps')
+    plt.ylabel('Regret')
+
+    plt.show()
+
