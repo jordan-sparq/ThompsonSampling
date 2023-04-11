@@ -346,5 +346,12 @@ if __name__ == '__main__':
     Example use cases
     """
     # basic use
-    # ArmTester(bandit=GaussianThompson, arm_values=[2, 1, 3, 5, 4], multiplier=2).run(100)
-    # ArmTester(bandit=BernoulliThompson, arm_values=[0.5, 0.1, 0.3, 0.2, 0.8], multiplier=1).run(100)
+
+    ArmTester(bandit=GaussianThompson, arm_values=[2, 1, 3, 5, 4], multiplier=2).run(100)
+    ArmTester(bandit=BernoulliThompson, arm_values=[0.5, 0.1, 0.3, 0.2, 0.8], multiplier=1).run(100)
+
+    # experiment
+    gaussian_thompson = ArmTester(bandit=GaussianThompson, arm_values=[2, 1, 3, 5, 4], multiplier=2)
+    number_of_steps = 100
+    experiment_gaussian = ArmExperiment(arm_tester=gaussian_thompson, number_of_steps=number_of_steps)
+    experiment_gaussian.run(change_point_method='window', change_point_window=30)
