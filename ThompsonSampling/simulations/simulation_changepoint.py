@@ -1,99 +1,65 @@
-# This is a sample Python script.
-
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
-
-import scipy.stats as stats
-from IPython.core.pylabtools import figsize
-norm = stats.norm
-gamma = stats.gamma
 import utils
-from change_point.change_point_rupture import *
-
-def simulation_changepoint(adjust_for_changepoint: bool = True,
-                           verbose: bool = False,
-                           history_window: int = None) -> None:
-    """
-    simulate a bandit problem where there is a change point for one arm
-
-    When we are at the 15th step, we adjust the mean of the true reward distribution from 5 to 15
-    If adjust_for_changepoint is True, we shift the expected mean of the reward function based on the observation
-    at the changepoint. i.e if we see 15 but epect 5, we shift by 10.
-
-    :param adjust_for_changepoint: true if you want the expected mean to adjust to the observed changepoint
-    :param verbose: print details about the changepoint of verbose = 1
-    :param history_window: window in which to store observations, if none, store all observations
-    :return: plots
-    """
-
-    assert (type(history_window) == int or history_window == None), "history_window must be None or an integer"
-
-    figsize(11.0, 10)
-
-    x = np.linspace(0.0, 30.0, 200)
-    # set the random seed to produce a recreatable graph
-    
-    seed = 42
-    random.seed(seed)
-    np.random.seed(seed)
-
-    # create 5 arms in a fixed order
-    arm_order = [2, 1, 3, 5, 4]
-
-    arm_true_values = [((q * 2) + 2) for q in arm_order]
-
-    print(f"True Values = {arm_true_values}")
-
-    arms = [GaussianThompson(q) for q in arm_true_values]
-    # print('arms', arms)
-    draw_samples = [1, 1, 3, 11, 10, 25, 150, 800]
-    # store n observations for each arm for change point detection
-    arm_observations = [[] for _ in range(len(arms))]
-
-    for j, i in enumerate(draw_samples):
-        plt.subplot(4, 2, j + 1)
-
-        for k in range(i):
-            # choose the arm with the current highest sampled value or arbitrary select a arm in the case of a tie
-            arm_samples = [arm.sample() for arm in arms]
-            arm_index = utils.random_argmax(arm_samples)
-            # charge from the chosen arm and update its mean reward value
-            # this will become a real observation but a simulation for now
-            if len(arm_observations[arm_index]) >= 15:  # simulate breakpoint
-                reward = arms[arm_index].simulate_observation(mu_vary=30)
-            else:
-                reward = arms[arm_index].simulate_observation()
-            arms[arm_index].update(reward)
-            # store observations
-            arm_observations[arm_index].append(reward)
-            # only want to store a rolling 30 observations
-            if history_window is not None:
-                if len(arm_observations[arm_index]) >= history_window:
-                    arm_observations[arm_index].pop(0)
-            # only want to look at change points once we have more than 10 observations
-            if len(arm_observations[arm_index]) >= 10:
-                result, distance, prob = window(arms[arm_index], arm_observations[arm_index])
-                if result is not None:
-                    if verbose:
-                        print(verbose)
-                        print(f"Change point detected! At {result[0]}")
-                    # adjust expected mean
-                    if adjust_for_changepoint:
-                        arms[arm_index].mu_0 += distance
-                    # TO DO: adjust expected mean if we see a change point for x days
-
-        arms[0].plot_arms(x, arms, arm_true_values)
-
-        plt.autoscale(tight=True)
-
-    plt.tight_layout()
-    plt.show()
-
-    plt.plot(arm_observations[3])
-    plt.show()
-
-
+from Bandit import *
+import change_point.change_point_rupture as changepoint
+import simulation
 
 if __name__ == '__main__':
-    simulation_changepoint(adjust_for_changepoint=True, verbose=0)
-    simulation_changepoint(adjust_for_changepoint=False, verbose=0)
+    """
+    Example use cases
+    """
+
+    # if we want a change point to be simulated for one arm
+    simulate_change_point_dict = {
+        'simulate_changepoint_arm_index': 3,
+        'simulate_changepoint_vary': 30,
+        'simulate_changepoint_step': 20,
+    }
+
+    # basic use
+    # ArmTester(bandit=GaussianThompson, arm_values=[2, 1, 3, 5, 4], multiplier=2).run(100)
+    # ArmTester(bandit=BernoulliThompson, arm_values=[0.5, 0.1, 0.3, 0.2, 0.8], multiplier=1).run(100)
+
+    # experiments with change point
+    gaussian_thompson = simulation.ArmTester(bandit=GaussianThompson, arm_values=[2, 1, 3, 5, 4], multiplier=2)
+    number_of_steps = 100
+    experiment_gaussian = simulation.ArmExperiment(arm_tester=gaussian_thompson, number_of_steps=number_of_steps)
+    experiment_gaussian.run(change_point_method='window', change_point_window=30,
+                            simulate_change_point_dict=simulate_change_point_dict)
+
+    # REGRET no change point
+    cumulative_optimal_reward_nocp = [r * 10 for r in range(1, number_of_steps + 1)]
+    regret_nochangepoint = cumulative_optimal_reward_nocp - experiment_gaussian.get_cumulative_reward_per_timestep()
+
+    # REGRET with change point detection ( we know where the change point is)
+    cumulative_optimal_reward = []
+    for r in range(1, number_of_steps + 1):
+        if r < simulate_change_point_dict['simulate_changepoint_step']:
+            cumulative_optimal_reward.append(10)
+        else:
+            cumulative_optimal_reward.append(simulate_change_point_dict['simulate_changepoint_vary'])
+
+    cumulative_optimal_reward = np.cumsum(cumulative_optimal_reward)
+    regret = cumulative_optimal_reward - experiment_gaussian.get_cumulative_reward_per_timestep()
+
+    fig = plt.figure(figsize=(20, 6))
+    plt.suptitle(f'Epsilon Greedy Regret', fontsize=20, fontweight='bold')
+
+    plt.subplot(1, 2, 1)
+    plt.plot(experiment_gaussian.get_cumulative_reward_per_timestep(), label="Actual")
+    plt.plot(cumulative_optimal_reward, label="Optimal")
+    plt.plot(cumulative_optimal_reward_nocp, label='No change point')
+    plt.plot(regret, label="Regret")
+    plt.legend()
+    plt.title('Cumulative Reward vs Time', fontsize=15)
+    plt.xlabel('Time Steps')
+    plt.ylabel('Total Reward')
+
+    plt.subplot(1, 2, 2)
+    plt.title('Regret vs Time', fontsize=15)
+    plt.plot(regret, label='Accounting for change points')
+    plt.plot(regret_nochangepoint, label='No change point detection')
+    plt.xlabel('Time Steps')
+    plt.ylabel('Regret')
+    plt.legend()
+
+    plt.show()
