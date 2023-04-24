@@ -56,9 +56,13 @@ class GaussianThompson(Bandit):
         # pass the true reward value to the base Bandit class
         super().__init__(q)
 
-    def sample(self):
+    def sample(self, arm_idle_count=0, scale_factor=.1):
         """ return a value from the posterior normal distribution """
-        return np.random.normal(loc=self.mu_0, scale=1/np.sqrt(self.tau_0))
+        # adjust variance by scale factor * idle count for every time step an arm is idle
+        adjusted_variance = (1/self.tau_0) + (1/self.tau_0) * arm_idle_count*scale_factor
+        adjusted_scale = np.sqrt(adjusted_variance)
+        self.tau_0 = (1/adjusted_scale**2)
+        return np.random.normal(loc=self.mu_0, scale=adjusted_scale)
 
     def update(self, R):
         """ update this arm after it has returned reward value 'R' """
@@ -78,6 +82,7 @@ class GaussianThompson(Bandit):
         # around the true value 'q'
         value = np.random.normal(loc=mu_vary, scale=1/np.sqrt(self.tau))
         return value
+
 
     def plot_arms(self, x: np.ndarray, arms, true_values: list):
         """

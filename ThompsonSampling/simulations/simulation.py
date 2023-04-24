@@ -28,7 +28,8 @@ class ArmTester:
         self.total_reward = None
         self.total_steps = None
         self.number_of_steps = None
-
+        self.arm_values = arm_values
+        self.multiplier = multiplier
         # create supplied arm type with a mean value defined by arm order
         self.arms = [bandit((q * multiplier), **kwargs) for q in arm_values]
 
@@ -122,13 +123,38 @@ class ArmTester:
         """ get the number of time steps that the test ran for """
         return self.total_steps
 
-    def select_arm(self, t):
+    def select_arm(self, t, arm_idle_count: list = None):
         """ Greedy arm Selection"""
-
+        assert len(arm_idle_count) == len(self.arms), "There must be an idle count for every arm"
         # choose the arm with the current highest mean reward or arbitrarily
-        # select a arm in the case of a tie            
-        arm_index = utils.random_argmax([arm.sample() for arm in self.arms])
+        # select a arm in the case of a tie
+        arm_index = utils.random_argmax([self.arms[arm].sample(arm_idle_count = arm_idle_count[arm]) for arm in range(len(self.arms))])
         return arm_index
+
+    def plot_arms(self, x: np.ndarray, arms, true_values: list):
+        """
+        plot arms probability distributions
+
+        :param x: domain to plot distributions over
+        :param arm: list of class objects
+        :param true_values: list of true means of each arm
+        :return: plot, return 0
+        """
+        trials = sum([arm.n for arm in arms])
+        norm = stats.norm
+        print(true_values)
+        for count, arm in enumerate(arms):
+            y = norm.pdf(x, arm.mu_0, np.sqrt(1. / arm.tau_0))
+            p = plt.plot(x, y, lw=2, label=f'{arm.n}/{trials}')
+            c = p[0].get_markeredgecolor()
+            plt.fill_between(x, y, 0, color=c, alpha=0.2)
+            plt.axvline(true_values[count], linestyle='--', color=c)
+            plt.autoscale(tight="True")
+            plt.title(f"{trials} Trials")
+            plt.legend()
+            plt.autoscale(tight=True)
+        plt.show()
+        return 0
 
     def run(self,
             number_of_steps,
@@ -137,7 +163,8 @@ class ArmTester:
             change_point_burn: int = 10,
             adjust_for_change_point: bool = False,
             change_point_window: int = None,
-            simulate_change_point_dict: dict = {}
+            simulate_change_point_dict: dict = {},
+            plot=False
             ):
         """ perform a single run, over the set of arms, 
             for the defined number of steps """
@@ -148,6 +175,8 @@ class ArmTester:
 
         # store rewards for change point detection
         arm_observations = [[] for _ in range(len(self.arms))]
+        # keep track of how long an arm hasn't been pulled
+        arm_idle_count = np.full(len(self.arms), 0)
 
         # reset the run counters
         self.initialize_run(number_of_steps)
@@ -159,7 +188,15 @@ class ArmTester:
             self.arm_stats[t] = self.get_arm_stats(t)
 
             # select an arm
-            arm_index = self.select_arm(t)
+            # pass it the idle count --> more chance to select idle arm
+            arm_index = self.select_arm(t, arm_idle_count=arm_idle_count)
+            # update idle arm counts
+            # reset to 0 if we choose this arm else increment by 1
+            for arm in range(len(self.arms)):
+                if arm == arm_index:
+                    arm_idle_count[arm] = 0
+                else:
+                    arm_idle_count[arm] += 1
 
             # simulate change point
             if len(simulate_change_point_dict) != 0 \
@@ -201,8 +238,9 @@ class ArmTester:
 
         # get the stats for each arm at the end of the run        
         self.arm_stats[t + 1] = self.get_arm_stats(t + 1)
-        # x = np.linspace(0, 20, 100)
-        # self.arms[0].plot_arms(x, self.arms, [((q * self.multiplier) + 2) for q in self.arm_values])
+        if plot:
+            x = np.linspace(0, 20, 1000)
+            self.plot_arms(x, self.arms, true_values=[self.multiplier*x for x in self.arm_values])
         return self.total_steps, self.total_reward
 
 
@@ -337,6 +375,7 @@ class ArmExperiment:
                                 adjust_for_change_point=adjust_for_change_point,
                                 change_point_window=change_point_window,
                                 simulate_change_point_dict=simulate_change_point_dict,
+                                plot=False
                                 )
             self.record_test_stats(n)
 
@@ -347,11 +386,14 @@ if __name__ == '__main__':
     """
     # basic use
 
-    ArmTester(bandit=GaussianThompson, arm_values=[2, 1, 3, 5, 4], multiplier=2).run(100)
-    ArmTester(bandit=BernoulliThompson, arm_values=[0.5, 0.1, 0.3, 0.2, 0.8], multiplier=1).run(100)
+    ArmTester(bandit=GaussianThompson, arm_values=[2, 1, 3, 5, 4], multiplier=2).run(100, plot = True)
+    # ArmTester(bandit=BernoulliThompson, arm_values=[0.5, 0.1, 0.3, 0.2, 0.8], multiplier=1).run(100)
 
     # experiment
-    gaussian_thompson = ArmTester(bandit=GaussianThompson, arm_values=[2, 1, 3, 5, 4], multiplier=2)
-    number_of_steps = 100
-    experiment_gaussian = ArmExperiment(arm_tester=gaussian_thompson, number_of_steps=number_of_steps)
-    experiment_gaussian.run(change_point_method='window', change_point_window=30)
+    # gaussian_thompson = ArmTester(bandit=GaussianThompson, arm_values=[2, 1, 3, 5, 4], multiplier=2)
+    # number_of_steps = 100
+    # experiment_gaussian = ArmExperiment(arm_tester=gaussian_thompson, number_of_steps=number_of_steps)
+    # experiment_gaussian.run(change_point_method='window', change_point_window=30)
+
+    # plot arms from one of these experiments
+
