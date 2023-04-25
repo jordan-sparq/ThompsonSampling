@@ -1,4 +1,4 @@
-from Bandit import *
+from src.Bandit import *
 import ruptures as rpt
 import scipy.stats
 

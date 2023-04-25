@@ -1,6 +1,4 @@
-import utils
-from Bandit import *
-import change_point.change_point_rupture as changepoint
+from src.Bandit import *
 import simulation
 
 if __name__ == '__main__':
