@@ -72,9 +72,11 @@ class GaussianThompson(Bandit):
         :return: sample from the normal
         """
         # adjust variance by scale factor * idle count for every time step an arm is idle
+        # if you don't want to adjust, set arm_idle_count to 0 or scalefactor
         adjusted_variance = (1 / self.tau_0) + (1 / self.tau_0) * arm_idle_count * scale_factor
         adjusted_scale = np.sqrt(adjusted_variance)
         self.tau_0 = (1 / adjusted_scale ** 2)
+        # sample from a normal as this is the expected distribution of our reward
         return np.random.normal(loc=self.mu_0, scale=adjusted_scale)
 
     def update(self, R) -> None:
@@ -90,6 +92,7 @@ class GaussianThompson(Bandit):
         # the new estimate of the mean is calculated from the old estimate
         self.Q = (1 - 1.0 / self.n) * self.Q + (1.0 / self.n) * R
         # update the mean and precision of the posterior
+        # can take these update functions from wiki
         self.mu_0 = ((self.tau_0 * self.mu_0) + (self.n * self.Q * self.tau)) / (self.tau_0 + self.n * self.tau)
         self.tau_0 += self.tau
 
@@ -162,7 +165,9 @@ class BernoulliThompson(Bandit):
         :return: None
         """
         self.n += 1
+        # update number of successes
         self.alpha += R
+        # update number of failures (if R=0 --> failure --> increment beta)
         self.beta += (1 - R)
 
     def sample(self) -> float:
