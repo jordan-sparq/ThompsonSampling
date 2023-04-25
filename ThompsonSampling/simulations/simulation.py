@@ -10,10 +10,11 @@ from IPython.core.pylabtools import figsize
 import utils
 from Bandit import *
 import change_point.change_point_rupture as changepoint
-
+from typing import Union
 
 class ArmTester:
-    """ create and test a set of arms over a single test run
+    """
+    Create and test a set of arms over a single test run
 
     credit:  Steve Roberts
     modified from: https://github.com/WhatIThinkAbout/BabyRobot/blob/master/Multi_Armed_Bandits/PowerarmSystem.py
@@ -30,6 +31,7 @@ class ArmTester:
         self.number_of_steps = None
         self.arm_values = arm_values
         self.multiplier = multiplier
+
         # create supplied arm type with a mean value defined by arm order
         self.arms = [bandit((q * multiplier), **kwargs) for q in arm_values]
 
@@ -43,8 +45,13 @@ class ArmTester:
         # by default a arm tester records 2 bits of information over a run
         self.number_of_stats = kwargs.pop('number_of_stats', 2)
 
-    def initialize_run(self, number_of_steps):
-        """ reset counters at the start of a run """
+    def initialize_run(self, number_of_steps) -> None:
+        """
+        reset counters at the start of a run
+
+        :param number_of_steps: Number of time steps to simulate with
+        :return: None
+        """
 
         # save the number of steps over which the run will take place
         self.number_of_steps = number_of_steps
@@ -66,15 +73,28 @@ class ArmTester:
         for arm in self.arms:
             arm.initialize()
 
-    def simulate_observation(self, arm_index, mu_vary=None):
+    def simulate_observation(self, arm_index, mu_vary=None) -> float:
+        """
+        Once an arm is chosen, simulate a response from choosing that action
+
+        :param arm_index: index of arm chosen [int]
+        :param mu_vary: vary the true mean of the expected distribution. Used to simulate a change point
+        :return: return the observation
+        """
         if mu_vary is None:
             return self.arms[arm_index].simulate_observation()
         else:
             # not all bandits will have this argument
             return self.arms[arm_index].simulate_observation(mu_vary=mu_vary)
 
-    def update(self, arm_index, reward):
-        """ charge from & update the specified arm and associated parameters """
+    def update(self, arm_index, reward) -> None:
+        """
+        Update the specified arm and associated parameters
+
+        :param arm_index: index of arm to update with new reward
+        :param reward: observed reward from choosing arm
+        :return: None
+        """
 
         # charge from the chosen arm and update its mean reward value
         self.arms[arm_index].update(reward)
@@ -85,45 +105,45 @@ class ArmTester:
         # store the reward obtained at this timestep
         self.reward_per_timestep.append(reward)
 
-    def get_arm_stats(self, t):
+    def get_arm_stats(self, t) -> list:
         """ get the current information from each arm """
         arm_stats = [[arm.Q, arm.n] for arm in self.arms]
         return arm_stats
 
-    def get_mean_reward(self):
+    def get_mean_reward(self) -> float:
         """ the total reward averaged over the number of time steps """
         return (self.total_reward / self.total_steps)
 
-    def get_total_reward_per_timestep(self):
+    def get_total_reward_per_timestep(self) -> float:
         """ the cumulative total reward at each timestep of the run """
         return self.total_reward_per_timestep
 
-    def get_reward_per_timestep(self):
+    def get_reward_per_timestep(self) -> float:
         """ the actual reward obtained at each timestep of the run """
         return self.reward_per_timestep
 
-    def get_estimates(self):
+    def get_estimates(self) -> float:
         """ get the estimate of each arm's reward at each timestep of the run """
         return self.arm_stats[:, :, 0]
 
-    def get_number_of_trials(self):
+    def get_number_of_trials(self) -> float:
         """ get the number of trials of each arm at each timestep of the run """
         return self.arm_stats[:, :, 1]
 
-    def get_arm_percentages(self):
+    def get_arm_percentages(self) -> float:
         """ get the percentage of times each arm was tried over the run """
         return self.arm_stats[:, :, 1][self.total_steps] / self.total_steps
 
-    def get_optimal_arm_percentage(self):
+    def get_optimal_arm_percentage(self) -> float:
         """ get the percentage of times the optimal arm was tried """
         final_trials = self.arm_stats[:, :, 1][self.total_steps]
         return final_trials[self.optimal_arm_index] / self.total_steps
 
-    def get_time_steps(self):
+    def get_time_steps(self) -> int:
         """ get the number of time steps that the test ran for """
         return self.total_steps
 
-    def select_arm(self, t, arm_idle_count: list = None):
+    def select_arm(self, t, arm_idle_count: list = None) -> int:
         """ Greedy arm Selection"""
         assert len(arm_idle_count) == len(self.arms), "There must be an idle count for every arm"
         # choose the arm with the current highest mean reward or arbitrarily
@@ -131,7 +151,7 @@ class ArmTester:
         arm_index = utils.random_argmax([self.arms[arm].sample(arm_idle_count = arm_idle_count[arm]) for arm in range(len(self.arms))])
         return arm_index
 
-    def plot_arms(self, x: np.ndarray, arms, true_values: list):
+    def plot_arms(self, x: np.ndarray, arms, true_values: list) -> None:
         """
         plot arms probability distributions
 
@@ -154,18 +174,17 @@ class ArmTester:
             plt.legend()
             plt.autoscale(tight=True)
         plt.show()
-        return 0
 
     def run(self,
-            number_of_steps,
-            maximum_total_reward=float('inf'),
+            number_of_steps: int,
+            maximum_total_reward: float = float('inf'),
             change_point_method: str = None,
             change_point_burn: int = 10,
             adjust_for_change_point: bool = False,
             change_point_window: int = None,
             simulate_change_point_dict: dict = {},
-            plot=False
-            ):
+            plot: bool = False
+            ) -> Union[int, float]:
         """ perform a single run, over the set of arms, 
             for the defined number of steps """
 
@@ -238,6 +257,8 @@ class ArmTester:
 
         # get the stats for each arm at the end of the run        
         self.arm_stats[t + 1] = self.get_arm_stats(t + 1)
+
+        # plot if boolean is true
         if plot:
             x = np.linspace(0, 20, 1000)
             self.plot_arms(x, self.arms, true_values=[self.multiplier*x for x in self.arm_values])
@@ -268,8 +289,12 @@ class ArmExperiment:
         self.maximum_total_reward = maximum_total_reward
         self.number_of_arms = self.arm_tester.number_of_arms
 
-    def initialize_run(self):
+    def initialize_run(self) -> None:
+        """
+        Reset counters for performance metrics
 
+        :return: None
+        """
         # keep track of the average values over the run
         self.mean_total_reward = 0.
         self.optimal_selected = 0.
@@ -282,39 +307,39 @@ class ArmExperiment:
         # the actual reward obtained at each timestep
         self.reward_per_timestep = np.zeros(shape=self.number_of_steps)
 
-    def get_mean_total_reward(self):
+    def get_mean_total_reward(self) -> float:
         """ the final total reward averaged over the number of timesteps """
         return self.mean_total_reward
 
-    def get_cumulative_reward_per_timestep(self):
+    def get_cumulative_reward_per_timestep(self) -> float:
         """ the cumulative total reward per timestep """
         return self.cumulative_reward_per_timestep
 
-    def get_reward_per_timestep(self):
+    def get_reward_per_timestep(self) -> float:
         """ the mean actual reward obtained at each timestep """
         return self.reward_per_timestep
 
-    def get_optimal_selected(self):
+    def get_optimal_selected(self) -> float:
         """ the mean times the optimal arm was selected """
         return self.optimal_selected
 
-    def get_arm_percentages(self):
+    def get_arm_percentages(self) -> float:
         """ the mean of the percentage times each arm was selected """
         return self.arm_percentages
 
-    def get_estimates(self):
+    def get_estimates(self) -> float:
         """ per arm reward estimates """
         return self.estimates
 
-    def get_number_of_trials(self):
+    def get_number_of_trials(self) -> int:
         """ per arm number of trials """
         return self.number_of_trials
 
-    def get_mean_time_steps(self):
+    def get_mean_time_steps(self) -> float:
         """ the average number of trials of each test """
         return self.mean_time_steps
 
-    def update_mean_array(self, current_mean, new_value, n):
+    def update_mean_array(self, current_mean, new_value, n) -> np.ndarray:
         """ calculate the new mean from the previous mean and the new value for an array """
 
         new_value = np.array(new_value)
@@ -329,11 +354,11 @@ class ArmExperiment:
 
         return (1 - 1.0 / n) * current_mean + (1.0 / n) * new_array
 
-    def update_mean(self, current_mean, new_value, n):
+    def update_mean(self, current_mean, new_value, n) -> float:
         """ calculate the new mean from the previous mean and the new value """
         return (1 - 1.0 / n) * current_mean + (1.0 / n) * new_value
 
-    def record_test_stats(self, n):
+    def record_test_stats(self, n) -> None:
         """ update the mean value for each statistic being tracked over a run """
 
         # calculate the new means from the old means and the new value
@@ -362,7 +387,7 @@ class ArmExperiment:
             adjust_for_change_point: bool = False,
             change_point_window: int = None,
             simulate_change_point_dict = {}
-            ):
+            ) -> None:
         """ repeat the test over a set of arms for the specified number of trials """
         # do the specified number of runs for a single test
         self.initialize_run()
@@ -386,7 +411,7 @@ if __name__ == '__main__':
     """
     # basic use
 
-    ArmTester(bandit=GaussianThompson, arm_values=[2, 1, 3, 5, 4], multiplier=2).run(100, plot = True)
+    ArmTester(bandit=GaussianThompson, arm_values=[2, 1, 3, 5, 4], multiplier=2).run(1000, plot = True)
     # ArmTester(bandit=BernoulliThompson, arm_values=[0.5, 0.1, 0.3, 0.2, 0.8], multiplier=1).run(100)
 
     # experiment

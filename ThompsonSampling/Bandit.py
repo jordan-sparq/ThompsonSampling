@@ -50,7 +50,7 @@ class GaussianThompson(Bandit):
     This assumes we know the variance of our reward distribution
     """
     def __init__(self, q, variance=1):
-        self.tau_0 = 0.0001  # the posterior precision
+        self.tau_0 = 0.00001  # the posterior precision
         self.mu_0 = 1  # the posterior mean
         self.tau = 1/variance
         # pass the true reward value to the base Bandit class
