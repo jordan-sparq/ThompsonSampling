@@ -53,7 +53,7 @@ class GaussianThompson(Bandit):
 
     def __init__(self, q, variance=1):
         self.tau_0 = 0.00001  # the posterior precision
-        self.mu_0 = 1  # the posterior mean
+        self.mu_0 = q  # the posterior mean
         self.tau = 1 / variance
         # pass the true reward value to the base Bandit class
         super().__init__(q)
@@ -73,6 +73,7 @@ class GaussianThompson(Bandit):
         """
         # adjust variance by scale factor * idle count for every time step an arm is idle
         # if you don't want to adjust, set arm_idle_count to 0 or scalefactor
+        print(self.tau_0)
         adjusted_variance = (1 / self.tau_0) + (1 / self.tau_0) * arm_idle_count * scale_factor
         adjusted_scale = np.sqrt(adjusted_variance)
         self.tau_0 = (1 / adjusted_scale ** 2)
@@ -105,6 +106,7 @@ class GaussianThompson(Bandit):
         """
         if mu_vary is None:
             mu_vary = self.q
+
         # the reward is a Gaussian distribution with unit variance
         # around the true value 'q'
         value = np.random.normal(loc=mu_vary, scale=1 / np.sqrt(self.tau))
