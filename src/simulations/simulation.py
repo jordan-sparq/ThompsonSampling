@@ -62,7 +62,7 @@ class ArmTester:
 
         # ensure that all arms are re-initialized
         for arm in self.arms:
-            arm.initialize()
+            arm.initialise()
 
     def simulate_observation(self, arm_index, mu_vary=None) -> float:
         """

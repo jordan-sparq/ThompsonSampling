@@ -15,9 +15,9 @@ class Bandit(ABC):
 
     def __init__(self, q):
         self.q = q  # the true reward value
-        self.initialize()  # reset the arm
+        self.initialise()  # reset the arm
 
-    def initialize(self):
+    def initialise(self):
         """ initialise bandit arm """
         self.Q = 0  # the estimate of this arm's reward value
         self.n = 0  # the number of times this arm has been tried

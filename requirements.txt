@@ -6,3 +6,4 @@ ruptures==1.1.7
 scipy
 seaborn==0.12.2
 tqdm==4.64.1
+pytest
