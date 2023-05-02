@@ -73,7 +73,6 @@ class GaussianThompson(Bandit):
         """
         # adjust variance by scale factor * idle count for every time step an arm is idle
         # if you don't want to adjust, set arm_idle_count to 0 or scalefactor
-        print(self.tau_0)
         adjusted_variance = (1 / self.tau_0) + (1 / self.tau_0) * arm_idle_count * scale_factor
         adjusted_scale = np.sqrt(adjusted_variance)
         self.tau_0 = (1 / adjusted_scale ** 2)
