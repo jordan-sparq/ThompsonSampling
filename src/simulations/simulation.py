@@ -4,6 +4,7 @@ import src.change_point.change_point_rupture as changepoint
 from typing import Union
 import configparser
 import json
+
 class ArmTester:
     """
     Create and test a set of arms over a single test run
@@ -175,6 +176,7 @@ class ArmTester:
             adjust_for_change_point: bool = False,
             change_point_window: int = None,
             simulate_change_point_dict: dict = {},
+            adjust_for_idle_arms: bool = True,
             plot: bool = False
             ) -> Union[int, float]:
         """ perform a single run, over the set of arms, 
@@ -200,6 +202,8 @@ class ArmTester:
 
             # select an arm
             # pass it the idle count --> more chance to select idle arm
+            if not adjust_for_idle_arms:
+                arm_idle_count = [0 for _ in range(len(self.arms))]
             arm_index = self.select_arm(t, arm_idle_count=arm_idle_count)
             # update idle arm counts
             # reset to 0 if we choose this arm else increment by 1
@@ -408,4 +412,6 @@ if __name__ == '__main__':
     arm_values = json.loads(config.get('PARAMETERS', 'arm_values'))
     ArmTester(bandit=eval(config['PARAMETERS']['bandit']),
               arm_values=arm_values,
-              multiplier=float(config['PARAMETERS']['multiplier'])).run(1000, plot = True)
+              multiplier=float(config['PARAMETERS']['multiplier'])).run(1000,
+                                                                        plot = True,
+                                                                        adjust_for_idle_arms=True)
